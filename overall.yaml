@@ -17,8 +17,8 @@ wandb_project: 'recbole'        # (str) The project to conduct experiments in W&
 shuffle: True                   # (bool) Whether or not to shuffle the training data before each epoch.
 
 # Training Settings
-epochs: 1                     # (int) The number of training epochs.
-train_batch_size: 256          # (int) The training batch size.(default:2048)
+epochs: 100                     # (int) The number of training epochs.
+train_batch_size: 2048          # (int) The training batch size.(default:2048)
 learner: adam                   # (str) The name of used optimizer.
 learning_rate: 0.001            # (float) Learning rate.
 train_neg_sample_args:          # (dict) Negative sampling configuration for model training.
