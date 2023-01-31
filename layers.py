@@ -1,20 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Time   : 2020/6/27 16:40
-# @Author : Shanlei Mu
-# @Email  : slmu@ruc.edu.cn
-# @File   : layers.py
-
-# UPDATE:
-# @Time   : 2022/7/16, 2020/8/24 14:58, 2020/9/16, 2020/9/21, 2020/10/9, 2021/05/01
-# @Author : Zhen Tian, Yujie Lu, Xingyu Pan, Zhichao Feng, Hui Wang, Xinyan Fan
-# @Email  : chenyuwuxinn@gmail.com, yujielu1998@gmail.com, panxy@ruc.edu.cn, fzcbupt@gmail.com, hui.wang@ruc.edu.cn, xinyan.fan@ruc.edu.cn
-
-"""
-recbole.model.layers
-#############################
-Common Layers in recommender system
-"""
-
 import copy
 import math
 import matplotlib.pyplot as plt
@@ -443,111 +426,33 @@ class MultiHeadAttention(nn.Module):
         key_layer = self.transpose_for_scores(mixed_key_layer).permute(0, 2, 3, 1)
         value_layer = self.transpose_for_scores(mixed_value_layer).permute(0, 2, 1, 3)
 
-        # Standard Attention
-        # Take the dot product between "query" and "key" to get the raw attention scores.
-        attention_scores = torch.matmul(query_layer, key_layer)
-        # attention_scores = 0
-        attention_scores = attention_scores / self.sqrt_attention_head_size
-        X=self.softmax(attention_scores)
-        # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
-        # [batch_size heads seq_len seq_len] scores
-        # [batch_size 1 1 seq_len]
-        attention_scores = attention_scores + attention_mask
-        # Normalize the attention scores to probabilities.
-        attention_probs = self.softmax(attention_scores)
-        # This is actually dropping out entire tokens to attend to, which might
-        # seem a bit unusual, but is taken from the original Transformer paper.
-        attention_probs = self.attn_dropout(attention_probs)    
-        context_layer = torch.matmul(attention_probs, value_layer)
+#         # Standard Attention
+#         # Take the dot product between "query" and "key" to get the raw attention scores.
+#         attention_scores = torch.matmul(query_layer, key_layer)
+#         # attention_scores = 0
+#         attention_scores = attention_scores / self.sqrt_attention_head_size
+#         X=self.softmax(attention_scores)
+#         # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+#         # [batch_size heads seq_len seq_len] scores
+#         # [batch_size 1 1 seq_len]
+#         attention_scores = attention_scores + attention_mask
+#         # Normalize the attention scores to probabilities.
+#         attention_probs = self.softmax(attention_scores)
+#         # This is actually dropping out entire tokens to attend to, which might
+#         # seem a bit unusual, but is taken from the original Transformer paper.
+#         attention_probs = self.attn_dropout(attention_probs)    
+#         context_layer = torch.matmul(attention_probs, value_layer)
 
-        # # Linear Attention SOFTMAX -- We Need (CORE FDSA SASRec) (ml and gowalla)
-        # context_layer = torch.matmul(self.softmax(query_layer),torch.matmul(self.softmax_col(key_layer),value_layer))/ self.sqrt_attention_head_size
-        # X=torch.matmul(self.softmax(query_layer),self.softmax_col(key_layer))
-
-        # # Linear Attention ELU --s We Need (CORE FDSA SASRec) (ml and gowalla)
-        # elu = nn.ELU()
-        # elu_query = elu(query_layer)
-        # elu_key = elu(key_layer)         
-        # context_layer = torch.matmul(elu_query,torch.matmul(elu_key,value_layer))/ self.sqrt_attention_head_size
-
-        # # Linear Attention SCALING
-        # context_layer = torch.matmul((query_layer)/self.scale,torch.matmul((key_layer)/self.scale,value_layer))/ self.sqrt_attention_head_size
-
-        # normalized linear attention 
-        # eps = 1e-12
-        # query_norm_inverse = 1/(torch.einsum('mnij->mni',query_layer)+eps)
-        # key_norm_inverse = 1/(torch.einsum('mnij->mnj',key_layer)+eps)
-
-        # query_norm_inverse = 1/torch.norm(query_layer, dim=3) #(norm)
-        # key_norm_inverse = 1/torch.norm(key_layer, dim=2)        
-        # query_norm_inverse = 1/torch.norm(query_layer, dim=3,p=1) #(L1 norm)
-        # key_norm_inverse = 1/torch.norm(key_layer, dim=2,p=1)
-
-        # # without elu layer
-        # query_norm_inverse = 1/torch.norm(query_layer, dim=3,p=2) #(L2 norm)
-        # key_norm_inverse = 1/torch.norm(key_layer, dim=2,p=2)
-      
-        # normalized_query_layer = torch.einsum('mnij,mni->mnij',query_layer,query_norm_inverse)
-        # normalized_key_layer = torch.einsum('mnij,mnj->mnij',key_layer,key_norm_inverse)
-        # context_layer = torch.matmul(normalized_query_layer,torch.matmul(normalized_key_layer,value_layer))/ self.sqrt_attention_head_size
-
-        # # From Bert4Rec Template
-        # elu = nn.ELU()
-        # elu_query = elu(query)
-        # elu_key = elu(key)
-        # # query_norm_inverse = 1/torch.einsum('mnij->mni',elu_query) #(sum norm)
-        # # key_norm_inverse = 1/torch.einsum('mnij->mnj',elu_key)
-        # query_norm_inverse = 1/torch.norm(elu_query, dim=-1,p=2) #(L2 norm)
-        # key_norm_inverse = 1/torch.norm(elu_key, dim=-2,p=2)
-        # normalized_query = torch.einsum('mnij,mni->mnij',elu_query,query_norm_inverse)
-        # normalized_key = torch.einsum('mnij,mnj->mnij',elu_key,key_norm_inverse)
-        # return torch.matmul(normalized_query,torch.matmul(normalized_key.transpose(-2, -1),value))/ math.sqrt(query.size(-1)) 
-
-        # # Our Elu Norm Attention
-        # elu = nn.ELU()
-        # # relu = nn.ReLU()
-        # elu_query = elu(query_layer)
-        # elu_key = elu(key_layer)       
-        # query_norm_inverse = 1/torch.norm(elu_query, dim=3,p=2) #(L2 norm)
-        # key_norm_inverse = 1/torch.norm(elu_key, dim=2,p=2)
-        # normalized_query_layer = torch.einsum('mnij,mni->mnij',elu_query,query_norm_inverse)
-        # normalized_key_layer = torch.einsum('mnij,mnj->mnij',elu_key,key_norm_inverse)
-        # X=torch.matmul(normalized_query_layer,normalized_key_layer)/40
-        # context_layer = torch.matmul(normalized_query_layer,torch.matmul(normalized_key_layer,value_layer))/ self.sqrt_attention_head_size
-
-
-        # X=X[0,0].cpu()
-        # X=X-X.min()
-        # # print(X.shape)
-        # print(X)
-
-        # Y = X.detach().numpy()+0.01*np.identity(50)
-        # # Y = X[-15:-1,-15:-1].detach().numpy()
-        # # with open("1.csv","ab") as f:
-        # #     # for i in range(occ_mask.shape[1]):
-        # #     # one_layer=occ_mask[1,:,:]
-        # #     np.savetxt(f,Y,delimiter=',',fmt="%d")
-        # Y=np.tril(Y)
-        # plt.imshow(Y, cmap=plt.cm.YlGnBu)
-        # plt.colorbar(shrink=1)
-        # # labels = ['1', '2', '3', '4', '5', '6', '7','8', '9', '10', '11', '12', '13', '14','15', '16', '17', '18', '19', '20','21', '22', '23', '24', '25']
-        # # labels = ['1', '2', '3', '4', '5', '6', '7','8', '9', '10', '11', '12', '13', '14','15', '16', '17', '18', '19', '20']
-        # # 在图中标注数量/概率信息
-        # # thresh = (X.max())/5	#数值颜色阈值，如果数值超过这个，就颜色加深。
-        # # for x in range(20):
-        # #     for y in range(20):
-        # #         # 注意这里的matrix[y, x]不是matrix[x, y]
-        # #         info = X[y, x].item()
-        # #         plt.text(x, y, info,
-        # #                 verticalalignment='center',
-        # #                 horizontalalignment='center',
-        # #                 color="white" if info > thresh else "black")                     
-        # plt.tight_layout()#保证图不重叠
-        # # plt.yticks(range(50), labels,fontsize=8)
-        # # plt.xticks(range(50), labels,fontsize=8)
-        # ##plt.xticks(range(6), labels,rotation=45)#X轴字体倾斜45°
-        # plt.show()   
-        # plt.close()
+        # Our Elu Norm Attention
+        elu = nn.ELU()
+        # relu = nn.ReLU()
+        elu_query = elu(query_layer)
+        elu_key = elu(key_layer)       
+        query_norm_inverse = 1/torch.norm(elu_query, dim=3,p=2) #(L2 norm)
+        key_norm_inverse = 1/torch.norm(elu_key, dim=2,p=2)
+        normalized_query_layer = torch.einsum('mnij,mni->mnij',elu_query,query_norm_inverse)
+        normalized_key_layer = torch.einsum('mnij,mnj->mnij',elu_key,key_norm_inverse)
+        context_layer = torch.matmul(normalized_query_layer,torch.matmul(normalized_key_layer,value_layer))/ self.sqrt_attention_head_size
 
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
